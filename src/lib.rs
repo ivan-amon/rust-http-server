@@ -5,7 +5,7 @@ use std::{
 
 pub struct ThreadPool {
     workers: Vec<Worker>,
-    sender: mpsc::Sender<Job>,
+    sender: Option<mpsc::Sender<Job>>,
 }
 
 type Job = Box<dyn FnOnce() + Send + 'static>;
@@ -37,7 +37,10 @@ impl ThreadPool {
             workers.push(Worker::new(id, Arc::clone(&receiver)));
         }
 
-        ThreadPool { workers, sender }
+        ThreadPool {
+            workers,
+            sender: Some(sender),
+        }
     }
 
     /// Create a new ThreadPool.
@@ -59,7 +62,18 @@ impl ThreadPool {
         F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
-        self.sender.send(job).unwrap();
+        self.sender.as_ref().unwrap().send(job).unwrap();
+    }
+}
+
+impl Drop for ThreadPool {
+    fn drop(&mut self) {
+        drop(self.sender.take());
+
+        for worker in self.workers.drain(..) {
+            println!("Shutting down worker {}", worker.id);
+            worker.thread.join().unwrap();
+        }
     }
 }
 
@@ -74,9 +88,17 @@ impl Worker {
             // Passive waiting, .recv() is a blocking task
             // .recv() over .try_recv() to avoid spinning
             loop {
-                let job = receiver.lock().unwrap().recv().unwrap();
-                println!("Worker {id} got a job; executing");
-                job();
+                let msg = receiver.lock().unwrap().recv();
+                match msg {
+                    Ok(job) => {
+                        println!("Worker {id} got a job; executing");
+                        job();
+                    }
+                    Err(_) => { // Graceful Shutdown
+                        println!("Worker {id} dissconnected; shutting down");
+                        break;
+                    }
+                }
             }
         }); // todo: change to std::thread:Builder
 
