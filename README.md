@@ -15,9 +15,9 @@ I am using this repository to showcase my technical skills in Rust, applying kno
 
 ## 📋 Learning Roadmap
 - [x] Initial project setup and TCP stream handling.
-- [ ] Basic HTTP protocol implementation (GET requests).
+- [x] Basic HTTP protocol implementation (GET requests).
 - [ ] Error handling and server robustness.
-- [ ] Refactoring for concurrency using a Thread Pool.
+- [x] Refactoring for concurrency using a Thread Pool.
 - [ ] Support for static files and other methods (POST, PUT).
 
 ---
