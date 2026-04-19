@@ -5,7 +5,7 @@ use std::{
 };
 use rust_http_server::ThreadPool;
 
-const IP_ADDR: &str = "127.0.0.1";
+const IP_ADDR: &str = "0.0.0.0";
 const PORT: &str = "7878";
 const NUM_THREADS: usize = 4;
 

@@ -18,6 +18,6 @@ WORKDIR /app
 COPY --from=builder /app/target/release/rust-http-server ./
 COPY hello.html 404.html ./
 
-EXPOSE 80
+EXPOSE 7878
 
 CMD ["./rust-http-server"]
