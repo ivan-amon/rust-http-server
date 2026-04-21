@@ -1,9 +1,11 @@
 use std::{
     fs,
-    io::{BufReader, prelude::*},
-    net::{TcpListener, TcpStream}, thread, time::Duration,
+    io::Write,
+    net::{TcpListener, TcpStream},
+    thread,
+    time::Duration,
 };
-use rust_http_server::ThreadPool;
+use rust_http_server::{HttpMethod, Request, Response, ThreadPool};
 
 const IP_ADDR: &str = "0.0.0.0";
 const PORT: &str = "7878";
@@ -19,7 +21,7 @@ fn main() {
     // - Requests arrives: iterator wakes up
     for stream in listener.incoming() {
         let stream = stream.unwrap(); // todo: error handling
-        
+
         pool.execute(|| {
             handle_connection(stream);
         });
@@ -27,25 +29,31 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let peer = stream.peer_addr().unwrap(); // todo: error handling
+    let request = match Request::new(&mut stream) {
+        Ok(req) => req,
+        Err(err) => {
+            eprintln!("Bad request: {err}");
+            let response = Response::new(400, "Bad Request".into(), err.into());
+            let _ = stream.write_all(response.to_string().as_bytes());
+            return;
+        }
+    };
+
+    let peer = request.peer_addr();
     println!("Request from: {}:{}", peer.ip(), peer.port());
 
-    let buf_reader = BufReader::new(&stream);
-    let request_line = buf_reader.lines().next().unwrap().unwrap();
-
-    let (status_line, filename) = match &request_line[..] {
-        "GET / HTTP/1.1" => ("HTTP/1.1 200 OK", "hello.html"),
-        "GET /sleep HTTP/1.1" => {
-            thread::sleep(Duration::from_secs(5));
-            ("HTTP/1.1 200 OK", "hello.html")
+    let (status_code, reason, filename) = match (request.method(), request.path()) {
+        (HttpMethod::Get, "/") => (200, "OK", "hello.html"),
+        (HttpMethod::Get, "/sleep") => {
+            thread::sleep(Duration::from_secs(8));
+            (200, "OK", "hello.html")
         }
-        _ => ("HTTP/1.1 400 NOT FOUND", "404.html")
+        _ => (404, "NOT FOUND", "404.html"),
     };
 
     let path = format!("static/{filename}");
     let contents = fs::read_to_string(path).unwrap(); // todo: error handling
-    let length = contents.len();
-    let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
 
-    stream.write_all(response.as_bytes()).unwrap(); // todo: error handling
+    let response = Response::new(status_code, reason.into(), contents);
+    stream.write_all(response.to_string().as_bytes()).unwrap(); // todo: error handling
 }

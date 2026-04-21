@@ -15,24 +15,28 @@ pub struct Request {
 }
 
 impl Request {
-
-    pub fn new(stream: TcpStream) -> Result<Self, &'static str> {
-        let buf_reader = BufReader::new(&stream);
+    pub fn new(stream: &mut TcpStream) -> Result<Self, &'static str> {
+        let buf_reader = BufReader::new(&mut *stream);
         let first_line = buf_reader.lines().next().unwrap().unwrap(); // todo: error handling
 
         let request_line = match RequestLine::new(&first_line) {
             Ok(req) => req,
             Err(err) => return Err(err),
         };
+        
 
         Ok(Request { 
             request_line, 
             peer_addr: stream.peer_addr().unwrap(),
         })
     }
+
+    pub fn peer_addr(&self) -> SocketAddr { self.peer_addr }
+    pub fn method(&self) -> &HttpMethod { &self.request_line.method }
+    pub fn path(&self) -> &str { &self.request_line.path }
 }
 
-enum HttpMethod {
+pub enum HttpMethod {
     Get,
     Post,
     Put,
@@ -92,9 +96,9 @@ mod tests {
 
     #[test]
     fn parses_valid_get_request_line() {
-        let stream = stream_with(b"GET /index.html HTTP/1.1\r\n\r\n");
+        let mut stream = stream_with(b"GET /index.html HTTP/1.1\r\n\r\n");
 
-        let request = Request::new(stream).expect("a well-formed GET should parse");
+        let request = Request::new(&mut stream).expect("a well-formed GET should parse");
 
         assert!(matches!(request.request_line.method, HttpMethod::Get));
         assert_eq!(request.request_line.path, "/index.html");
@@ -102,21 +106,50 @@ mod tests {
     }
 
     #[test]
-    fn rejects_unknown_http_method() {
-        let stream = stream_with(b"FOO /index.html HTTP/1.1\r\n\r\n");
+    fn parses_valid_post_request_line() {
+        let mut stream = stream_with(b"POST /submit HTTP/1.1\r\n\r\n");
 
-        let result = Request::new(stream);
+        let request = Request::new(&mut stream).expect("a well-formed POST should parse");
+
+        assert!(matches!(request.request_line.method, HttpMethod::Post));
+        assert_eq!(request.request_line.path, "/submit");
+        assert_eq!(request.request_line.version, "HTTP/1.1");
+    }
+
+    #[test]
+    fn rejects_unknown_http_method() {
+        let mut stream = stream_with(b"FOO /index.html HTTP/1.1\r\n\r\n");
+
+        let result = Request::new(&mut stream);
 
         assert!(result.is_err(), "an unknown HTTP method must be rejected");
     }
 
     #[test]
     fn rejects_noise_input() {
-        let stream = stream_with(b"%%garbage--no-structure$$\r\n\r\n");
+        let mut stream = stream_with(b"%%garbage--no-structure$$\r\n\r\n");
 
-        let result = Request::new(stream);
+        let result = Request::new(&mut stream);
 
         assert!(result.is_err(), "malformed input must be rejected");
+    }
+
+    #[test]
+    fn rejects_request_line_with_missing_parts() {
+        let mut stream = stream_with(b"GET /index.html\r\n\r\n");
+
+        let result = Request::new(&mut stream);
+
+        assert!(result.is_err(), "a request line missing the version must be rejected");
+    }
+
+    #[test]
+    fn stream_remains_usable_after_parsing() {
+        let mut stream = stream_with(b"GET /index.html HTTP/1.1\r\nHost: localhost\r\n\r\n");
+
+        let _request = Request::new(&mut stream).expect("a well-formed GET should parse");
+
+        let _still_mine: &mut TcpStream = &mut stream;
     }
 }
 
