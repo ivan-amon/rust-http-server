@@ -57,6 +57,7 @@ impl ThreadPool {
         Ok(ThreadPool::new(size))
     }
 
+    /// 
     pub fn execute<F>(&self, f: F)
     where
         F: FnOnce() + Send + 'static,
