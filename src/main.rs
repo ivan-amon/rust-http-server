@@ -42,7 +42,8 @@ fn handle_connection(mut stream: TcpStream) {
         _ => ("HTTP/1.1 400 NOT FOUND", "404.html")
     };
 
-    let contents = fs::read_to_string(filename).unwrap(); // todo: error handling
+    let path = format!("static/{filename}");
+    let contents = fs::read_to_string(path).unwrap(); // todo: error handling
     let length = contents.len();
     let response = format!("{status_line}\r\nContent-Length: {length}\r\n\r\n{contents}");
 
