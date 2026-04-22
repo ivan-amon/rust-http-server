@@ -1,11 +1,11 @@
+use rust_http_server::{HttpMethod, Request, Response, ThreadPool};
 use std::{
     fs,
-    io::Write,
+    io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
     thread,
     time::Duration,
 };
-use rust_http_server::{HttpMethod, Request, Response, ThreadPool};
 
 const IP_ADDR: &str = "0.0.0.0";
 const PORT: &str = "7878";
@@ -29,18 +29,24 @@ fn main() {
 }
 
 fn handle_connection(mut stream: TcpStream) {
-    let request = match Request::new(&mut stream) {
-        Ok(req) => req,
-        Err(err) => {
-            eprintln!("Bad request: {err}");
-            let response = Response::new(400, "Bad Request".into(), err.into());
-            let _ = stream.write_all(response.to_string().as_bytes());
+    let mut reader = BufReader::new(&mut stream);
+    let mut raw_request = String::new();
+
+    // todo: add body to raw request, not needed for GET method
+    loop {
+        let bytes_read = reader.read_line(&mut raw_request).unwrap();
+        if bytes_read == 0 { // Connection Closed
             return;
         }
-    };
+        if raw_request.ends_with("\r\n\r\n") { // End of Headers
+            break;
+        }
+    }
 
-    let peer = request.peer_addr();
-    println!("Request from: {}:{}", peer.ip(), peer.port());
+    let request = match Request::parse(&raw_request) {
+        Ok(r) => r,
+        Err(_) => return, // todo: send 400 Bad Request
+    };
 
     let (status_code, reason, filename) = match (request.method(), request.path()) {
         (HttpMethod::Get, "/") => (200, "OK", "hello.html"),
