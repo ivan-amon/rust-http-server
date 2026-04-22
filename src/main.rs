@@ -1,10 +1,7 @@
-use rust_http_server::{HttpMethod, Request, Response, ThreadPool};
+use rust_http_server::{Request, ThreadPool, router};
 use std::{
-    fs,
     io::{BufRead, BufReader, Write},
     net::{TcpListener, TcpStream},
-    thread,
-    time::Duration,
 };
 
 const IP_ADDR: &str = "0.0.0.0";
@@ -48,18 +45,6 @@ fn handle_connection(mut stream: TcpStream) {
         Err(_) => return, // todo: send 400 Bad Request
     };
 
-    let (status_code, reason, filename) = match (request.method(), request.path()) {
-        (HttpMethod::Get, "/") => (200, "OK", "hello.html"),
-        (HttpMethod::Get, "/sleep") => {
-            thread::sleep(Duration::from_secs(8));
-            (200, "OK", "hello.html")
-        }
-        _ => (404, "NOT FOUND", "404.html"),
-    };
-
-    let path = format!("static/{filename}");
-    let contents = fs::read_to_string(path).unwrap(); // todo: error handling
-
-    let response = Response::new(status_code, reason.into(), contents);
+    let response = router::dispatch(&request);
     stream.write_all(response.to_string().as_bytes()).unwrap(); // todo: error handling
 }

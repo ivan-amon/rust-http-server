@@ -1,4 +1,5 @@
 pub mod thread_pool;
+pub mod router;
 pub mod http;
 
 pub use crate::thread_pool::ThreadPool;

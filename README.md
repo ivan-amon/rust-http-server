@@ -11,14 +11,15 @@ I am using this repository to showcase my technical skills in Rust, applying kno
 ## 🛠️ Technologies
 * **Language:** Rust
 * **Tools:** Cargo
-* **Dev Environment:** Arch Linux 🐧
+* **Dev Environment:** Arch Linux 🐧 (btw)
 
 ## 📋 Learning Roadmap
 - [x] Initial project setup and TCP stream handling.
 - [x] Basic HTTP protocol implementation (GET requests).
-- [ ] Error handling and server robustness.
 - [x] Refactoring for concurrency using a Thread Pool.
-- [ ] Support for static files and other methods (POST, PUT).
+- [x] routing system with dispatch by HTTP method.
+- [ ] Error handling and server robustness.
+- [ ] Support for other HTTP methods (POST, PUT, DELETE).
 
 ---
 *This project is part of my personal portfolio. You can find more of my work at [ivanamon.dev](https://ivanamon.dev)*
