@@ -17,7 +17,7 @@ I am using this repository to showcase my technical skills in Rust, applying kno
 - [x] Initial project setup and TCP stream handling.
 - [x] Basic HTTP protocol implementation (GET requests).
 - [x] Refactoring for concurrency using a Thread Pool.
-- [x] routing system with dispatch by HTTP method.
+- [x] Routing system with dispatch by HTTP method.
 - [X] Error handling and server robustness.
 - [ ] Support for other HTTP methods (POST, PUT, DELETE).
 
