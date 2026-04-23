@@ -16,7 +16,7 @@ FROM alpine:latest
 WORKDIR /app
 
 COPY --from=builder /app/target/release/rust-http-server ./
-COPY hello.html 404.html ./
+COPY static ./static
 
 EXPOSE 7878
 
