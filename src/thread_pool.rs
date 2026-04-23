@@ -63,7 +63,11 @@ impl ThreadPool {
         F: FnOnce() + Send + 'static,
     {
         let job = Box::new(f);
-        self.sender.as_ref().unwrap().send(job).unwrap();
+        self.sender
+            .as_ref()
+            .expect("ThreadPool has been dropped")
+            .send(job)
+            .expect("All workers have died");
     }
 }
 
@@ -73,7 +77,9 @@ impl Drop for ThreadPool {
 
         for worker in self.workers.drain(..) {
             println!("Shutting down worker {}", worker.id);
-            worker.thread.join().unwrap();
+            if let Err(err) = worker.thread.join() {
+                eprintln!("Worker {} panicked during shutdown: {err:?}", worker.id);
+            }
         }
     }
 }
@@ -89,7 +95,7 @@ impl Worker {
             // Passive waiting, .recv() is a blocking task
             // .recv() over .try_recv() to avoid spinning
             loop {
-                let msg = receiver.lock().unwrap().recv();
+                let msg = receiver.lock().expect("Mutex Poisoned").recv();
                 match msg {
                     Ok(job) => {
                         println!("Worker {id} got a job; executing");

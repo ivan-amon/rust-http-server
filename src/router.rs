@@ -11,7 +11,14 @@ use crate::http::{HttpMethod, Request, Response};
 pub fn dispatch(request: &Request<'_>) -> Response<'static> {
     let method = request.method();
     match method {
-        HttpMethod::Get => get(request.path()),
+        HttpMethod::Get => match get(request.path()) {
+            Ok(response) => response,
+            Err(err) => {
+                eprintln!("Failed to read static file: {err}");
+                Response::new(500, "INTERNAL SERVER ERROR",
+                    "<html><body><h1>500 Internal Server Error</h1></body></html>")
+            },
+        }
         _ => Response::new(
             400,
             "BAD REQUEST",
@@ -23,7 +30,7 @@ pub fn dispatch(request: &Request<'_>) -> Response<'static> {
 ///
 /// Returns `404 Not Found` for unknown paths. The `/sleep` path blocks the
 /// thread for 8 seconds before responding.
-fn get(path: &str) -> Response<'static> {
+fn get(path: &str) -> Result<Response<'static>, std::io::Error> {
     let (status_code, reason_phrase, path) = match path {
         "/" => (200, "OK", "static/hello.html"),
         "/sleep" => {
@@ -33,6 +40,6 @@ fn get(path: &str) -> Response<'static> {
         _ => (404, "NOT FOUND", "static/404.html")
     };
 
-    let content = fs::read_to_string(path).unwrap();
-    Response::new(status_code, reason_phrase, content)
+    let content = fs::read_to_string(path)?;
+    Ok(Response::new(status_code, reason_phrase, content))
 }
